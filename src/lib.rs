@@ -1,3 +1,5 @@
+mod client;
+pub use client::Client;
 mod container;
 pub use container::Container;
 

@@ -1,11 +1,9 @@
+use crate::Client;
 use log::{debug, error, info, warn};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use shiplift::{rep::ContainerDetails, ContainerOptions, Docker, PullOptions, RmContainerOptions};
+use shiplift::{rep::ContainerDetails, ContainerOptions, PullOptions, RmContainerOptions};
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::prelude::{future, Future, Stream};
-
-pub type Client = Arc<Docker>;
 
 pub enum Protocol {
     Tcp,
@@ -30,19 +28,18 @@ pub struct Port {
 pub struct Container {
     pub(crate) details: ContainerDetails,
 
-    client: Arc<Docker>,
+    client: Client,
 }
 
 impl Container {
     pub fn new(
-        client: &Client,
         image_name: impl Into<String>,
     ) -> impl Future<Item = Self, Error = shiplift::Error> {
-        ContainerBuilder::new(client, image_name).build()
+        ContainerBuilder::new(image_name).build()
     }
 
-    pub fn builder(client: &Client, image_name: impl Into<String>) -> ContainerBuilder {
-        ContainerBuilder::new(client, image_name)
+    pub fn builder(image_name: impl Into<String>) -> ContainerBuilder {
+        ContainerBuilder::new(image_name)
     }
 
     pub fn id(&self) -> &str {
@@ -67,21 +64,21 @@ pub struct ContainerBuilder {
     name: Option<String>,
     ports: Vec<Port>,
 
-    client: Arc<Docker>,
+    client: Client,
 
     pull_on_build: bool,
     slug_length: usize,
 }
 
 impl ContainerBuilder {
-    pub fn new(client: &Client, image_name: impl Into<String>) -> Self {
+    pub fn new(image_name: impl Into<String>) -> Self {
         ContainerBuilder {
             image_name: image_name.into(),
             image_tag: String::from("latest"),
             name: None,
             ports: Vec::new(),
 
-            client: Arc::clone(client),
+            client: Client::default(),
 
             pull_on_build: false,
             slug_length: 0,
@@ -92,13 +89,14 @@ impl ContainerBuilder {
         format!("{}:{}", self.image_name, self.image_tag)
     }
 
-    pub fn name(mut self, name: impl Into<String>) -> Self {
-        self.name = Some(name.into());
+    pub fn client(mut self, client: impl Into<Client>) -> Self {
+        self.client = client.into();
         self
     }
 
-    pub fn pull_image(&self) -> impl Future<Item = (), Error = shiplift::Error> {
-        pull_image(Arc::clone(&self.client), self.image()).map(|_| ())
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
     }
 
     pub fn slug_length(mut self, length: usize) -> Self {
@@ -131,22 +129,14 @@ impl ContainerBuilder {
         let name = self.slugged_name();
         let ports = self.ports;
 
-        pull_image_if(self.client, image, self.pull_on_build)
-            .and_then(|(client, image)| create_container(client, image, name, ports))
-            .and_then(|(client, id)| run_container(client, id))
-            .and_then(|(client, id)| inspect_container(client, id))
-            .map(|(client, details)| Container { details, client })
-    }
-}
-
-fn pull_image_if(
-    client: Client,
-    image: String,
-    pull: bool,
-) -> impl Future<Item = (Client, String), Error = shiplift::Error> {
-    match pull {
-        true => future::Either::A(pull_image(client, image)),
-        false => future::Either::B(future::ok((client, image))),
+        match self.pull_on_build {
+            true => future::Either::A(pull_image(self.client, image)),
+            false => future::Either::B(future::ok((self.client, image))),
+        }
+        .and_then(|(client, image)| create_container(client, image, name, ports))
+        .and_then(|(client, id)| run_container(client, id))
+        .and_then(|(client, id)| inspect_container(client, id))
+        .map(|(client, details)| Container { details, client })
     }
 }
 
