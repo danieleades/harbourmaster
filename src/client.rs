@@ -1,21 +1,19 @@
+use lazy_static::lazy_static;
 use std::ops;
 use std::sync::Arc;
-use lazy_static::lazy_static;
 
 /// Docker client
 pub struct Client {
     inner_client: Arc<shiplift::Docker>,
 }
 
-
 impl Client {
-
     /// Construct a new unique Docker Client. Unless you know you need
     /// a unique Client, you should probably `use Client::default()` which
-    /// uses a global Docker client internally 
+    /// uses a global Docker client internally
     pub fn new() -> Self {
         Self {
-            inner_client: Arc::new(shiplift::Docker::new())
+            inner_client: Arc::new(shiplift::Docker::new()),
         }
     }
 }
@@ -37,11 +35,11 @@ impl ops::Deref for Client {
 
 impl From<shiplift::Docker> for Client {
     /// Create a new Docker Client from a shiplift::Docker object
-    /// 
+    ///
     /// # Example
     /// ```
     /// use harbourmaster::Client;
-    /// 
+    ///
     /// let client = Client::from(
     ///     shiplift::Docker::new()
     /// );
@@ -75,8 +73,7 @@ impl From<&Client> for Client {
     }
 }
 
-
-lazy_static!{
+lazy_static! {
     static ref CLIENT: Client = Client::new();
 }
 

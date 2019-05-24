@@ -32,9 +32,7 @@ pub struct Container {
 }
 
 impl Container {
-    pub fn new(
-        image_name: impl Into<String>,
-    ) -> impl Future<Item = Self, Error = shiplift::Error> {
+    pub fn new(image_name: impl Into<String>) -> impl Future<Item = Self, Error = shiplift::Error> {
         ContainerBuilder::new(image_name).build()
     }
 
@@ -148,7 +146,7 @@ fn pull_image(
 
     client
         .images()
-        .pull(&PullOptions::builder().image(&image).build())
+        .pull(&PullOptions::builder().image(image.clone()).build())
         .for_each(|output| {
             debug!("{:?}", output);
             Ok(())
