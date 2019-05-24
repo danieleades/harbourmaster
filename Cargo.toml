@@ -1,5 +1,5 @@
 [package]
-name = "canister"
+name = "harbourmaster"
 description = "Convenient, high-level abstractions of running Docker containers"
 version = "0.0.0"
 homepage = "https://github.com/danieleades/canister"
@@ -10,7 +10,7 @@ edition = "2018"
 license = "Apache-2.0"
 
 [badges]
-travis-ci = { repository = "danieleades/canister" }
+travis-ci = { repository = "danieleades/harbourmaster" }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
