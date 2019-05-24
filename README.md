@@ -1,3 +1,3 @@
-[![Build Status](https://travis-ci.org/danieleades/canister.svg?branch=master)](https://travis-ci.org/danieleades/canister)
+[![Build Status](https://travis-ci.org/danieleades/harbourmaster.svg?branch=master)](https://travis-ci.org/danieleades/harbourmaster)
 
 License: Apache-2.0
