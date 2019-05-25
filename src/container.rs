@@ -1,25 +1,11 @@
-use crate::Client;
+use crate::{Client, Protocol};
 use log::{debug, error, info, warn};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use shiplift::{rep::ContainerDetails, ContainerOptions, PullOptions, RmContainerOptions};
 use std::collections::HashMap;
 use tokio::prelude::{future, Future, Stream};
 
-pub enum Protocol {
-    Tcp,
-    Udp,
-}
-
-impl AsRef<str> for Protocol {
-    fn as_ref(&self) -> &str {
-        match self {
-            Protocol::Tcp => "tcp",
-            Protocol::Udp => "udp",
-        }
-    }
-}
-
-pub struct Port {
+struct Port {
     pub source: u32,
     pub host: u32,
     pub protocol: Protocol,
@@ -117,8 +103,12 @@ impl ContainerBuilder {
         }
     }
 
-    pub fn expose(mut self, port: Port) -> Self {
-        self.ports.push(port);
+    pub fn expose(mut self, src_port: u16, host_port: u16, protocol: Protocol) -> Self {
+        self.ports.push(Port {
+            source: src_port.into(),
+            host: host_port.into(),
+            protocol,
+        });
         self
     }
 
