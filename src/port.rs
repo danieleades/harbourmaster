@@ -1,7 +1,11 @@
-use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket};
+//use std::net::{SocketAddrV4};
 
+/// Enum representing a port's communication protocol
 pub enum Protocol {
+    /// TCP protocol
     Tcp,
+
+    /// UDP protocol
     Udp,
 }
 
@@ -14,8 +18,9 @@ impl AsRef<str> for Protocol {
     }
 }
 
-pub struct ContainerPort {
-    source_port: u16,
-    host_socket: SocketAddrV4,
-    protocol: Protocol,
-}
+// /// This struct represents 
+// struct ContainerPort {
+//     source_port: u16,
+//     host_socket: SocketAddrV4,
+//     protocol: Protocol,
+// }
