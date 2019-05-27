@@ -5,12 +5,11 @@ fn main() {
     // Generate README.md with cargo_readme.
 
     let mut f = fs::File::open("src/lib.rs").unwrap();
-    //let mut template = fs::File::open("./README.tpl").unwrap();
+    let mut template = fs::File::open("./README.tpl").unwrap();
     let content = cargo_readme::generate_readme(
         &path::PathBuf::from("./"),
         &mut f,
-        //Some(&mut template),
-        None,
+        Some(&mut template),
         false,
         true,
         true,

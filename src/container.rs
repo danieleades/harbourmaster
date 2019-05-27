@@ -35,7 +35,26 @@ impl Container {
     /// use tokio::prelude::Future;
     /// use harbourmaster::Container;
     /// 
-    /// let fut = Container::new("alpine")
+    /// let image = "alpine";
+    /// # // make sure the image actually exists locally!
+    /// # use tokio::prelude::Stream;
+    /// # use shiplift::{Docker, PullOptions};
+    /// # tokio::run(
+    /// #    Docker::default().images().pull(
+    /// #          &PullOptions::builder().image(image.clone()).tag("latest").build()
+    /// #    )
+    /// #    .for_each(|output| {
+    /// #       println!("{:?}", output);
+    /// #       Ok(())
+    /// #     })
+    /// #    .map(move |_| {
+    /// #       println!("pulled image: {}", &image);
+    /// #       ()
+    /// #     })
+    /// #    .map_err( |e| println!("Error: {}", e))
+    /// # );
+    /// 
+    /// let fut = Container::new(image)
     ///     .map(
     ///         |container| {
     ///         println!("container created!");
