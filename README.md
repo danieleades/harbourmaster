@@ -2,7 +2,7 @@
 # harbourmaster
 
 [![Build Status](https://travis-ci.org/danieleades/harbourmaster.svg?branch=master)](https://travis-ci.org/danieleades/harbourmaster)
-[![Latest Docs](https://docs.rs/harbourmaster/badge.svg)](https://docs.rs/harbourmaster/0.0.0/harbourmaster/)
+[![Latest Docs](https://docs.rs/harbourmaster/badge.svg)](https://docs.rs/harbourmaster/)
 
 Harbourmaster is a library of high-level abstractions of Docker objects.
 
@@ -39,6 +39,6 @@ tokio::run(fut);
 
 ---
 
-Current version: 0.0.0
+Current version: 0.1.0
 
 License: Apache-2.0

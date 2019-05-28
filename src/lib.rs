@@ -1,7 +1,7 @@
 #![warn(clippy::all)]
 #![warn(missing_docs)]
 
-//! [![Latest Docs](https://docs.rs/harbourmaster/badge.svg)](https://docs.rs/harbourmaster/0.0.0/harbourmaster/)
+//! [![Latest Docs](https://docs.rs/harbourmaster/badge.svg)](https://docs.rs/harbourmaster/)
 //! 
 //! Harbourmaster is a library of high-level abstractions of Docker objects.
 //!
