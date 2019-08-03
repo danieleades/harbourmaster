@@ -10,19 +10,6 @@ pub struct Network {
 
 impl Network {
     /// Return a Future which resolves to a new Network.
-    ///
-    /// # Example
-    /// ```
-    /// use harbourmaster::Network;
-    /// use tokio::prelude::Future;
-    ///
-    /// let fut = Network::new("my cool network")
-    ///    .and_then(|net| net.delete())
-    ///    .map_err(|e| println!("Error: {}", e));
-    ///
-    /// tokio::run(fut);
-    /// ```
-    ///
     pub async fn new(name: impl AsRef<str>) -> Result<Self, shiplift::Error> {
         NetworkBuilder::new(name).build().await
     }
