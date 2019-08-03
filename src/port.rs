@@ -18,7 +18,7 @@ impl AsRef<str> for Protocol {
     }
 }
 
-// /// This struct represents 
+// /// This struct represents
 // struct ContainerPort {
 //     source_port: u16,
 //     host_socket: SocketAddrV4,

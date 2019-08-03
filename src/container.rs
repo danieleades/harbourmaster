@@ -1,10 +1,14 @@
 use crate::{Client, Protocol};
-use log::{debug, error, info, warn};
+use futures::{
+    compat::{Future01CompatExt, Stream01CompatExt},
+    stream::StreamExt,
+};
+use log::{debug, info};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use shiplift::rep::ContainerCreateInfo;
 use shiplift::{rep::ContainerDetails, ContainerOptions, PullOptions, RmContainerOptions};
 use std::collections::HashMap;
 use std::net::SocketAddrV4;
-use tokio::prelude::{future, Future, Stream};
 
 struct Port {
     pub source: u32,
@@ -13,13 +17,13 @@ struct Port {
 }
 
 /// Abstraction of a running Docker container.
-/// 
+///
 /// Use the [new](Container::new)
 /// method to create a Container with sensible defaults, or the [builder](Container::builder)
 /// method if you need advanced features.
-/// 
+///
 /// Container constructors return a future which will be resolved to a Container.
-/// The Containers will NOT clean themselves up when they are dropped, you must call the 
+/// The Containers will NOT clean themselves up when they are dropped, you must call the
 /// [delete](Container::delete) method on them to remove the container from the host machine.
 pub struct Container {
     pub(crate) details: ContainerDetails,
@@ -29,103 +33,105 @@ pub struct Container {
 
 impl Container {
     /// Create a new Docker container.
-    /// 
+    ///
     /// # Example
-    /// ```
-    /// use tokio::prelude::Future;
+    ///  ```
+    /// # #![feature(async_await)]
+    /// # use futures::{compat::Stream01CompatExt, stream::StreamExt};
     /// use harbourmaster::Container;
-    /// 
-    /// let image = "alpine";
-    /// # // make sure the image actually exists locally!
-    /// # use tokio::prelude::Stream;
-    /// # use shiplift::{Docker, PullOptions};
-    /// # tokio::run(
-    /// #    Docker::default().images().pull(
-    /// #          &PullOptions::builder().image(image.clone()).tag("latest").build()
-    /// #    )
-    /// #    .for_each(|output| {
-    /// #       println!("{:?}", output);
-    /// #       Ok(())
-    /// #     })
-    /// #    .map(move |_| {
-    /// #       println!("pulled image: {}", &image);
-    /// #       ()
-    /// #     })
-    /// #    .map_err( |e| println!("Error: {}", e))
-    /// # );
-    /// 
-    /// let fut = Container::new(image)
-    ///     .map(
-    ///         |container| {
+    /// use tokio;
+    ///
+    ///     let future03 = async {
+    ///         let image = "alpine";
+    ///
+    /// #        // make sure image actually exists locally!
+    /// #        use shiplift::{Docker, PullOptions};
+    /// #        let mut stream = Docker::default()
+    /// #            .images()
+    /// #            .pull(
+    /// #                &PullOptions::builder()
+    /// #                    .image(image.clone())
+    /// #                    .tag("latest")
+    /// #                    .build(),
+    /// #            )
+    /// #            .compat();
+    /// #
+    /// #        while let Some(Ok(status)) = stream.next().await {
+    /// #            println!("{}", status);
+    /// #        }
+    /// #
+    /// #        println!("pulled image: {}", &image);
+    /// #
+    ///         let container = Container::new(image).await.unwrap();
     ///         println!("container created!");
-    ///         container
-    ///     })
-    ///     .and_then(
-    ///         |container| {
-    ///         println!("removing container");
-    ///         container.delete()
-    ///     })
-    ///     .map_err(
-    ///         |e| println!("Error: {}", e)
-    ///     );
-    /// 
-    /// tokio::run(fut);
-    /// ```
-    pub fn new(image_name: impl Into<String>) -> impl Future<Item = Self, Error = shiplift::Error> {
-        ContainerBuilder::new(image_name).build()
+    ///
+    ///         container.delete().await.unwrap();
+    ///         println!("container deleted!");
+    ///
+    ///         Ok(())
+    ///     };
+    ///
+    ///     // For the time being, we have to convert the future from a future-0.3 to a future-0.1 to run on the tokio executor
+    ///     use futures::future::{FutureExt, TryFutureExt};
+    ///     let future01 = future03.boxed().compat();
+    ///
+    ///     tokio::run(future01);
+    ///
+    ///  ```
+    pub async fn new(image_name: impl Into<String>) -> Result<Container, shiplift::Error> {
+        ContainerBuilder::new(image_name).build().await
     }
 
     /// Create a new Docker container with advanced configuration.
-    /// 
+    ///
     /// Check the [ContainerBuilder](ContainerBuilder) documentation for the full
     /// list of options.
-    /// 
+    ///
     /// # Example
     /// ```
-    /// use tokio::prelude::Future;
-    /// use harbourmaster::Container;
-    /// 
-    /// let fut = Container::builder("couchdb")
-    ///     // the docker image tag to use
-    ///     .tag("2.3.0")
-    /// 
-    ///     // set the name of the docker container
-    ///     .name("test_container")
-    /// 
-    ///     // optionally add an alphanumeric 'slug' to the
-    ///     // container name. Useful if you're creating and
-    ///     // naming them in bulk.
-    ///     .slug_length(6)
-    /// 
-    ///     // if true, pull the image from the webular information
-    ///     // super-highway before building.
-    ///     .pull_on_build(true)
-    /// 
-    ///     // build the container using the above parameters
-    ///     .build()
-    /// 
-    ///         // do something with your container
-    ///         .map(
-    ///             |container| {
-    ///             println!("container created!");
-    ///             container
-    ///         })
-    /// 
-    ///         // clean up your container when you're finished
-    ///         .and_then(
-    ///             |container| {
-    ///             println!("removing container");
-    /// 
-    ///             container.delete()
-    ///         })
-    /// 
-    ///         // handle any errors
-    ///         .map_err(
-    ///             |e| println!("Error: {}", e)
-    ///         );
-    /// 
-    /// // run the future
-    /// tokio::run(fut);
+    /// # #![feature(async_await)]
+    /// use harbourmaster::{Container, Protocol};
+    /// use tokio;
+    ///
+    ///     let future03 = async {
+    ///         let container = Container::builder("couchdb")
+    ///             // the docker image tag to use
+    ///             .tag("2.3.0")
+    ///
+    ///             // set the name of the docker container
+    ///             .name("test_container")
+    ///
+    ///             // optionally add an alphanumeric 'slug' to the
+    ///             // container name. Useful if you're creating and
+    ///             // naming them in bulk
+    ///             .slug_length(6)
+    ///
+    ///             // expose ports on the container to the host machine
+    ///             .expose(5984, 5984, Protocol::Tcp)
+    ///
+    ///             // if true, pull the image from the webular information
+    ///             // super-highway before building.
+    ///             .pull_on_build(true)
+    ///
+    ///             // build the container using the above parameters
+    ///             .build()
+    ///             .await
+    ///             .unwrap();
+    ///
+    ///         println!("container created!");
+    ///
+    ///         container.delete().await.unwrap();
+    ///         println!("container deleted!");
+    ///
+    ///         Ok(())
+    ///     };
+    ///
+    ///     // For the time being, we have to convert the future from a future-0.3 to a future-0.1 to run on the tokio executor
+    ///     use futures::future::{FutureExt, TryFutureExt};
+    ///     let future01 = future03.boxed().compat();
+    ///
+    ///     tokio::run(future01);
+    ///
     /// ```
     pub fn builder(image_name: impl Into<String>) -> ContainerBuilder {
         ContainerBuilder::new(image_name)
@@ -155,13 +161,15 @@ impl Container {
     }
 
     /// Delete the running docker container.
-    /// 
+    ///
     /// This is equivalent to calling `docker rm -f [container]`.
-    pub fn delete(self) -> impl Future<Item = (), Error = shiplift::Error> {
+    pub async fn delete(self) -> Result<(), shiplift::Error> {
         self.client
             .containers()
             .get(&self.id())
             .remove(RmContainerOptions::builder().force(true).build())
+            .compat()
+            .await
     }
 }
 
@@ -169,7 +177,7 @@ pub type SourcePort = (u16, Protocol);
 pub type HostPort = SocketAddrV4;
 
 /// Builder struct for fine control over the construction of a [Container](Container).
-/// 
+///
 /// see [Container::builder()](Container::builder) for example.
 pub struct ContainerBuilder {
     image_name: String,
@@ -209,7 +217,7 @@ impl ContainerBuilder {
     }
 
     /// Use an alternative Docker [Client](Client) to manipulate the Container.ContainerBuilder
-    /// 
+    ///
     /// This defaults to a globally shared Docker client at the default socket. This should be
     /// fine in just about all cases.
     pub fn client(mut self, client: impl Into<Client>) -> Self {
@@ -224,9 +232,9 @@ impl ContainerBuilder {
     }
 
     /// Optionally add an alphanumeric 'slug' to the container name.
-    /// 
+    ///
     /// In the form "[container name]_XXXX" where XXXX represents the slug.
-    /// 
+    ///
     /// Useful if you're creating a job lot of containers and you want them to
     /// have human readable names, but no collisions.
     pub fn slug_length(mut self, length: usize) -> Self {
@@ -250,7 +258,7 @@ impl ContainerBuilder {
     }
 
     /// Expose a port from the container to the host.
-    /// 
+    ///
     /// Can be called multiple times to expose multiple ports.
     pub fn expose(mut self, src_port: u16, host_port: u16, protocol: Protocol) -> Self {
         self.ports.push(Port {
@@ -269,49 +277,47 @@ impl ContainerBuilder {
     }
 
     /// Consume the ContainerBuilder and return a future which resolves to the Container (or an error!).
-    pub fn build(self) -> impl Future<Item = Container, Error = shiplift::Error> {
+    pub async fn build(self) -> Result<Container, shiplift::Error> {
         let image = self.image();
         let name = self.slugged_name();
         let ports = self.ports;
+        let client = self.client;
 
         if self.pull_on_build {
-            future::Either::A(pull_image(self.client, image))
-        } else {
-            future::Either::B(future::ok((self.client, image)))
+            pull_image(&client, &image).await?;
         }
-        .and_then(|(client, image)| create_container(client, image, name, ports))
-        .and_then(|(client, id)| run_container(client, id))
-        .and_then(|(client, id)| inspect_container(client, id))
-        .map(|(client, details)| Container { details, client })
+
+        let create_info = create_container(&client, &image, name, ports).await?;
+        let id = create_info.id;
+        run_container(&client, &id).await?;
+        let details = inspect_container(&client, &id).await?;
+        Ok(Container { details, client })
     }
 }
 
-fn pull_image(
-    client: Client,
-    image: String,
-) -> impl Future<Item = (Client, String), Error = shiplift::Error> {
+async fn pull_image(client: &Client, image: &str) -> Result<(), shiplift::Error> {
     info!("pulling image: {}", &image);
 
-    client
+    let mut stream = client
         .images()
-        .pull(&PullOptions::builder().image(image.clone()).build())
-        .for_each(|output| {
-            debug!("{:?}", output);
-            Ok(())
-        })
-        .map(move |_| {
-            info!("pulled image: {}", &image);
-            (client, image)
-        })
+        .pull(&PullOptions::builder().image(image).build())
+        .compat();
+    while let Some(Ok(chunk)) = stream.next().await {
+        //let chunk = chunk?;
+        debug!("{}", chunk);
+    }
+
+    info!("pulled image: {}", &image);
+    Ok(())
 }
 
-fn create_container<S: AsRef<str>>(
-    client: Client,
-    image: String,
+async fn create_container<S: AsRef<str>>(
+    client: &Client,
+    image: &str,
     container_name: Option<S>,
     ports: impl IntoIterator<Item = Port>,
-) -> impl Future<Item = (Client, String), Error = shiplift::Error> {
-    let mut container_options = ContainerOptions::builder(image.as_ref());
+) -> Result<ContainerCreateInfo, shiplift::Error> {
+    let mut container_options = ContainerOptions::builder(image);
 
     if let Some(name) = container_name.as_ref() {
         container_options.name(name.as_ref());
@@ -324,23 +330,14 @@ fn create_container<S: AsRef<str>>(
     client
         .containers()
         .create(&container_options.build())
-        .map(|info| (client, info.id))
+        .compat()
+        .await
 }
 
-fn run_container(
-    client: Client,
-    id: String,
-) -> impl Future<Item = (Client, String), Error = shiplift::Error> {
-    client.containers().get(&id).start().map(|_| (client, id))
+async fn run_container(client: &Client, id: &str) -> Result<(), shiplift::Error> {
+    client.containers().get(&id).start().compat().await
 }
 
-fn inspect_container(
-    client: Client,
-    id: String,
-) -> impl Future<Item = (Client, ContainerDetails), Error = shiplift::Error> {
-    client
-        .containers()
-        .get(&id)
-        .inspect()
-        .map(|details| (client, details))
+async fn inspect_container(client: &Client, id: &str) -> Result<ContainerDetails, shiplift::Error> {
+    client.containers().get(&id).inspect().compat().await
 }

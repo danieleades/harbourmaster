@@ -1,8 +1,8 @@
 use crate::Client;
+use futures::compat::Future01CompatExt;
 use shiplift::{builder::NetworkCreateOptionsBuilder, NetworkCreateOptions};
-use tokio::prelude::Future;
 
-// Abstraction of a temporary Docker network that cleans up after itself when dropped.
+/// Abstraction of a temporary Docker network that cleans up after itself when dropped.
 pub struct Network {
     id: String,
     client: Client,
@@ -23,8 +23,8 @@ impl Network {
     /// tokio::run(fut);
     /// ```
     ///
-    pub fn new(name: impl AsRef<str>) -> impl Future<Item = Self, Error = shiplift::Error> {
-        NetworkBuilder::new(name).build()
+    pub async fn new(name: impl AsRef<str>) -> Result<Self, shiplift::Error> {
+        NetworkBuilder::new(name).build().await
     }
 
     pub fn builder(name: impl AsRef<str>) -> NetworkBuilder {
@@ -35,8 +35,8 @@ impl Network {
         &self.id
     }
 
-    pub fn delete(self) -> impl Future<Item = (), Error = shiplift::Error> {
-        self.client.networks().get(&self.id).delete()
+    pub async fn delete(self) -> Result<(), shiplift::Error> {
+        self.client.networks().get(&self.id).delete().compat().await
     }
 }
 
@@ -53,13 +53,17 @@ impl NetworkBuilder {
         }
     }
 
-    pub fn build(self) -> impl Future<Item = Network, Error = shiplift::Error> {
-        self.client
+    pub async fn build(self) -> Result<Network, shiplift::Error> {
+        let create_info = self
+            .client
             .networks()
             .create(&self.options.build())
-            .map(|info| Network {
-                id: info.id,
-                client: self.client,
-            })
+            .compat()
+            .await?;
+
+        Ok(Network {
+            id: create_info.id,
+            client: self.client,
+        })
     }
 }
