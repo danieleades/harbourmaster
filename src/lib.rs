@@ -20,3 +20,5 @@ pub use crate::network::Network;
 mod port;
 pub use crate::port::Protocol;
 pub use container::{Container, ContainerBuilder};
+
+pub use shiplift::Error;
