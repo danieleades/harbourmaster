@@ -20,7 +20,6 @@ use harbourmaster::Container;
 
 #[tokio::main]
 async fn main() {
-
     let image = "alpine";
 
     println!("creating container!");
