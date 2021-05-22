@@ -1,8 +1,7 @@
 use crate::Client;
 use shiplift::{builder::NetworkCreateOptionsBuilder, NetworkCreateOptions};
 
-/// Abstraction of a temporary Docker network that cleans up after itself when
-/// dropped.
+/// Abstraction of a Docker network
 pub struct Network {
     id: String,
     client: Client,
