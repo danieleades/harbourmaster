@@ -58,7 +58,7 @@ impl Container {
     /// to pull the image first.
     ///
     /// # Example
-    ///  ```no_run
+    ///  ```
     /// use harbourmaster::Container;
     ///
     /// #[tokio::main]
@@ -82,7 +82,7 @@ impl Container {
     /// full list of options.
     ///
     /// # Example
-    /// ```no_run
+    /// ```
     /// use harbourmaster::{Container, Protocol};
     ///
     /// #[tokio::main]
