@@ -1,7 +1,10 @@
 use crate::{Client, Protocol};
 use futures_util::stream::StreamExt;
 use log::{debug, info};
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand::{
+    distributions::{Alphanumeric, Distribution},
+    thread_rng,
+};
 use shiplift::{
     rep::{ContainerCreateInfo, ContainerDetails},
     ContainerOptions, PullOptions, RmContainerOptions,
@@ -228,9 +231,12 @@ impl ContainerBuilder {
         let base_name = self.name.clone()?;
 
         if self.slug_length > 0 {
-            let slug: String = thread_rng()
-                .sample_iter(&Alphanumeric)
+            let mut rng = thread_rng();
+
+            let slug: String = Alphanumeric
+                .sample_iter(&mut rng)
                 .take(self.slug_length)
+                .map(char::from)
                 .collect();
 
             Some(base_name + "_" + &slug)
