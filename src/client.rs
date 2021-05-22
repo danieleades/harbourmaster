@@ -1,6 +1,5 @@
 use lazy_static::lazy_static;
-use std::ops;
-use std::sync::Arc;
+use std::{ops, sync::Arc};
 
 /// Docker client
 pub struct Client {
@@ -28,6 +27,7 @@ impl Default for Client {
 
 impl ops::Deref for Client {
     type Target = shiplift::Docker;
+
     fn deref(&self) -> &Self::Target {
         &self.inner_client
     }
@@ -40,9 +40,7 @@ impl From<shiplift::Docker> for Client {
     /// ```
     /// use harbourmaster::Client;
     ///
-    /// let client = Client::from(
-    ///     shiplift::Docker::new()
-    /// );
+    /// let client = Client::from(shiplift::Docker::new());
     /// ```
     fn from(docker: shiplift::Docker) -> Self {
         Client {

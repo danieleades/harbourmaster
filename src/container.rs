@@ -2,10 +2,11 @@ use crate::{Client, Protocol};
 use futures_util::stream::StreamExt;
 use log::{debug, info};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use shiplift::rep::ContainerCreateInfo;
-use shiplift::{rep::ContainerDetails, ContainerOptions, PullOptions, RmContainerOptions};
-use std::collections::HashMap;
-use std::net::SocketAddrV4;
+use shiplift::{
+    rep::{ContainerCreateInfo, ContainerDetails},
+    ContainerOptions, PullOptions, RmContainerOptions,
+};
+use std::{collections::HashMap, net::SocketAddrV4};
 
 struct Port {
     pub source: u32,
@@ -16,12 +17,13 @@ struct Port {
 /// Abstraction of a running Docker container.
 ///
 /// Use the [new](Container::new)
-/// method to create a Container with sensible defaults, or the [builder](Container::builder)
-/// method if you need advanced features.
+/// method to create a Container with sensible defaults, or the
+/// [builder](Container::builder) method if you need advanced features.
 ///
-/// Container constructors return a future which will be resolved to a Container.
-/// The Containers will NOT clean themselves up when they are dropped, you must call the
-/// [delete](Container::delete) method on them to remove the container from the host machine.
+/// Container constructors return a future which will be resolved to a
+/// Container. The Containers will NOT clean themselves up when they are
+/// dropped, you must call the [delete](Container::delete) method on them to
+/// remove the container from the host machine.
 pub struct Container {
     pub(crate) details: ContainerDetails,
 
@@ -49,7 +51,8 @@ impl Container {
 
     /// Pull an image and create a new Docker container from it.
     ///
-    /// This method is identical to `Container::new` except that it will attempt to pull the image first.
+    /// This method is identical to `Container::new` except that it will attempt
+    /// to pull the image first.
     ///
     /// # Example
     ///  ```no_run
@@ -72,8 +75,8 @@ impl Container {
 
     /// Create a new Docker container with advanced configuration.
     ///
-    /// Check the [ContainerBuilder](ContainerBuilder) documentation for the full
-    /// list of options.
+    /// Check the [ContainerBuilder](ContainerBuilder) documentation for the
+    /// full list of options.
     ///
     /// # Example
     /// ```no_run
@@ -81,35 +84,35 @@ impl Container {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///         let container = Container::builder("couchdb")
+    ///     let container = Container::builder("couchdb")
     ///             // the docker image tag to use
     ///             .tag("2.3.0")
-    ///
+    ///     
     ///             // set the name of the docker container
     ///             .name("test_container")
-    ///
+    ///     
     ///             // optionally add a randomised alphanumeric 'slug' to the
     ///             // container name. Useful if you're creating and
     ///             // naming them in bulk
     ///             .slug_length(6)
-    ///
+    ///     
     ///             // expose ports on the container to the host machine
     ///             .expose(5984, 5984, Protocol::Tcp)
-    ///
+    ///     
     ///             // if true, pull the image from the webular information
     ///             // super-highway before building.
     ///             .pull_on_build(true)
-    ///
+    ///     
     ///             // build the container using the above parameters
     ///             .build()
     ///             .await
     ///             .unwrap();
     ///
-    ///         println!("container created!");
+    ///     println!("container created!");
     ///
-    ///         container.delete().await.unwrap();
-    ///         println!("container deleted!");
-    ///     }
+    ///     container.delete().await.unwrap();
+    ///     println!("container deleted!");
+    /// }
     /// ```
     pub fn builder(image_name: impl Into<String>) -> ContainerBuilder {
         ContainerBuilder::new(image_name)
@@ -132,8 +135,8 @@ impl Container {
         unimplemented!()
     }
 
-    /// Exposes the underlying representation of the Docker container's ports. It's messy, this part of
-    /// the API will change shortly.
+    /// Exposes the underlying representation of the Docker container's ports.
+    /// It's messy, this part of the API will change shortly.
     pub fn ports_raw(&self) -> &Option<HashMap<String, Option<Vec<HashMap<String, String>>>>> {
         &self.details.network_settings.ports
     }
@@ -153,7 +156,8 @@ impl Container {
 pub type SourcePort = (u16, Protocol);
 pub type HostPort = SocketAddrV4;
 
-/// Builder struct for fine control over the construction of a [Container](Container).
+/// Builder struct for fine control over the construction of a
+/// [Container](Container).
 ///
 /// see [Container::builder()](Container::builder) for example.
 pub struct ContainerBuilder {
@@ -193,10 +197,11 @@ impl ContainerBuilder {
         self
     }
 
-    /// Use an alternative Docker [Client](Client) to manipulate the Container.ContainerBuilder
+    /// Use an alternative Docker [Client](Client) to manipulate the
+    /// Container.ContainerBuilder
     ///
-    /// This defaults to a globally shared Docker client at the default socket. This should be
-    /// fine in just about all cases.
+    /// This defaults to a globally shared Docker client at the default socket.
+    /// This should be fine in just about all cases.
     pub fn client(mut self, client: impl Into<Client>) -> Self {
         self.client = client.into();
         self
@@ -246,14 +251,15 @@ impl ContainerBuilder {
         self
     }
 
-    /// Set whether the client will attempt to pull the image from the internet before
-    /// running the container. defaults to false.
+    /// Set whether the client will attempt to pull the image from the internet
+    /// before running the container. defaults to false.
     pub fn pull_on_build(mut self, pull: bool) -> Self {
         self.pull_on_build = pull;
         self
     }
 
-    /// Consume the ContainerBuilder and return a future which resolves to the Container (or an error!).
+    /// Consume the ContainerBuilder and return a future which resolves to the
+    /// Container (or an error!).
     pub async fn build(self) -> Result<Container, shiplift::Error> {
         let image = self.image();
         let name = self.slugged_name();
@@ -279,7 +285,7 @@ async fn pull_image(client: &Client, image: &str) -> Result<(), shiplift::Error>
         .images()
         .pull(&PullOptions::builder().image(image).build());
     while let Some(Ok(chunk)) = stream.next().await {
-        //let chunk = chunk?;
+        // let chunk = chunk?;
         debug!("{}", chunk);
     }
 
