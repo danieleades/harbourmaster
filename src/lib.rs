@@ -14,7 +14,7 @@
 //! removing Docker containers.
 //!
 //! ## Usage
-//! ```rust, no_run
+//! ```no_run
 //! use harbourmaster::Container;
 //!
 //! #[tokio::main]

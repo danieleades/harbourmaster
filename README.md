@@ -15,10 +15,10 @@ Particularly useful for unit testing that involves spinning up and then
 removing Docker containers.
 
 ### Usage
-```rust, no_run
+```rust
 use harbourmaster::Container;
 
-##[tokio::main]
+#[tokio::main]
 async fn main() {
 
     let image = "alpine";
@@ -31,7 +31,7 @@ async fn main() {
     container.delete().await.unwrap();
     println!("container removed!");
 }
-```rust
+```
 
 ---
 
