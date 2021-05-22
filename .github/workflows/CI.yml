@@ -64,19 +64,18 @@ jobs:
           args: --all -- --check
 
   clippy:
-    name: Clippy
+    name: Clippy Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
-          override: true
           profile: minimal
           components: clippy
-      - uses: actions-rs/cargo@v1
+      - uses: actions-rs/clippy-check@v1
         with:
-          command: clippy
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
 
   docs:
     name: Docs
