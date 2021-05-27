@@ -9,6 +9,10 @@ async fn main() {
         // set the name of the docker container
         .name("test_container")
 
+        // add environment variables
+        .environment_variable("COUCHDB_USER=admin")
+        .environment_variable("COUCHDB_PASSWORD=password")
+
         // optionally add a randomised alphanumeric 'slug' to the
         // container name. Useful if you're creating and
         // naming them in bulk

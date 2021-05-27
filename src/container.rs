@@ -168,6 +168,8 @@ pub struct ContainerBuilder {
     image_tag: String,
     name: Option<String>,
     ports: Vec<Port>,
+    commands: Vec<String>,
+    environment_variables: Vec<String>,
 
     client: Client,
 
@@ -182,6 +184,8 @@ impl ContainerBuilder {
             image_tag: String::from("latest"),
             name: None,
             ports: Vec::new(),
+            commands: Vec::new(),
+            environment_variables: Vec::new(),
 
             client: Client::default(),
 
@@ -245,6 +249,16 @@ impl ContainerBuilder {
         }
     }
 
+    /// Run commands when starting the container
+    pub fn commands<I, S>(mut self, commands: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.commands = commands.into_iter().map(Into::into).collect();
+        self
+    }
+
     /// Expose a port from the container to the host.
     ///
     /// Can be called multiple times to expose multiple ports.
@@ -254,6 +268,12 @@ impl ContainerBuilder {
             host: host_port.into(),
             protocol,
         });
+        self
+    }
+
+    /// Add an environment variable to the container.
+    pub fn environment_variable(mut self, env: impl Into<String>) -> Self {
+        self.environment_variables.push(env.into());
         self
     }
 
@@ -268,19 +288,28 @@ impl ContainerBuilder {
     /// Container (or an error!).
     pub async fn build(self) -> Result<Container, shiplift::Error> {
         let image = self.image();
-        let name = self.slugged_name();
-        let ports = self.ports;
-        let client = self.client;
+        let commands = self.commands.iter().map(AsRef::as_ref).collect();
 
         if self.pull_on_build {
-            pull_image(&client, &image).await?;
+            pull_image(&self.client, &image).await?;
         }
 
-        let create_info = create_container(&client, &image, name, ports).await?;
+        let create_info = create_container(
+            &self.client,
+            &image,
+            self.slugged_name(),
+            self.ports,
+            commands,
+            self.environment_variables,
+        )
+        .await?;
         let id = create_info.id;
-        run_container(&client, &id).await?;
-        let details = inspect_container(&client, &id).await?;
-        Ok(Container { details, client })
+        run_container(&self.client, &id).await?;
+        let details = inspect_container(&self.client, &id).await?;
+        Ok(Container {
+            details,
+            client: self.client,
+        })
     }
 }
 
@@ -304,8 +333,12 @@ async fn create_container<S: AsRef<str>>(
     image: &str,
     container_name: Option<S>,
     ports: impl IntoIterator<Item = Port>,
+    commands: Vec<&str>,
+    environment_variables: Vec<String>,
 ) -> Result<ContainerCreateInfo, shiplift::Error> {
     let mut container_options = ContainerOptions::builder(image);
+    container_options.cmd(commands);
+    container_options.env(environment_variables);
 
     if let Some(name) = container_name.as_ref() {
         container_options.name(name.as_ref());

@@ -34,6 +34,6 @@ async fn main() {
 
 ---
 
-Current version: 0.3.1
+Current version: 0.4.0
 
 License: Apache-2.0
