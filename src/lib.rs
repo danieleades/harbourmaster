@@ -2,7 +2,7 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::missing_errors_doc)]
 
-//! [![Build Status](https://travis-ci.org/danieleades/harbourmaster.svg?branch=master)](https://travis-ci.org/danieleades/harbourmaster)
+//! [![Continuous integration](https://github.com/danieleades/harbourmaster/actions/workflows/CI.yml/badge.svg)](https://github.com/danieleades/harbourmaster/actions/workflows/CI.yml)
 //! [![Latest Docs](https://docs.rs/harbourmaster/badge.svg)](https://docs.rs/harbourmaster/)
 //!
 //! Harbourmaster is a library of high-level abstractions of Docker objects.
