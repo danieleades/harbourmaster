@@ -21,9 +21,9 @@ async fn main() {
         // expose ports on the container to the host machine
         .expose(5984, 5984, Protocol::Tcp)
 
-        // if true, pull the image from the webular information
+        // if set, pull the image from the webular information
         // super-highway before building.
-        .pull_on_build(true)
+        .pull_on_build()
 
         // build the container using the above parameters
         .build()

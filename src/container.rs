@@ -71,7 +71,7 @@ impl Container {
     /// }
     ///  ```
     pub async fn pull(image_name: impl Into<String>) -> Result<Container, shiplift::Error> {
-        Builder::new(image_name).pull_on_build(true).build().await
+        Builder::new(image_name).pull_on_build().build().await
     }
 
     /// Create a new Docker container with advanced configuration.
@@ -100,9 +100,9 @@ impl Container {
     ///             // expose ports on the container to the host machine
     ///             .expose(5984, 5984, Protocol::Tcp)
     ///     
-    ///             // if true, pull the image from the webular information
+    ///             // if set, pull the image from the webular information
     ///             // super-highway before building.
-    ///             .pull_on_build(true)
+    ///             .pull_on_build()
     ///     
     ///             // build the container using the above parameters
     ///             .build()
@@ -124,11 +124,6 @@ impl Container {
     pub fn id(&self) -> &str {
         &self.details.id
     }
-
-    /// Not yet implemented
-    // #[must_use] fn ports(&self) -> &HashMap<SourcePort, Vec<HostPort>> {
-    //     todo!()
-    // }
 
     /// Exposes the underlying representation of the Docker container's ports.
     /// It's messy, this part of the API will change shortly.
@@ -159,6 +154,7 @@ pub type PortMap = HashMap<String, Option<Vec<HashMap<String, String>>>>;
 ///
 /// see [`Container::builder`] for example.
 #[derive(Debug)]
+#[must_use]
 pub struct Builder {
     image_name: String,
     image_tag: String,
@@ -222,7 +218,6 @@ impl Builder {
     ///
     /// Useful if you're creating a job lot of containers and you want them to
     /// have human readable names, but no collisions.
-    #[must_use]
     pub fn slug_length(mut self, length: usize) -> Self {
         self.slug_length = length;
         self
@@ -259,7 +254,6 @@ impl Builder {
     /// Expose a port from the container to the host.
     ///
     /// Can be called multiple times to expose multiple ports.
-    #[must_use]
     pub fn expose(mut self, src_port: u16, host_port: u16, protocol: Protocol) -> Self {
         self.ports.push(Port {
             source: src_port.into(),
@@ -277,9 +271,8 @@ impl Builder {
 
     /// Set whether the client will attempt to pull the image from the internet
     /// before running the container. defaults to false.
-    #[must_use]
-    pub fn pull_on_build(mut self, pull: bool) -> Self {
-        self.pull_on_build = pull;
+    pub fn pull_on_build(mut self) -> Self {
+        self.pull_on_build = true;
         self
     }
 
@@ -290,6 +283,7 @@ impl Builder {
         let commands = self.commands.iter().map(AsRef::as_ref).collect();
 
         if self.pull_on_build {
+            dbg!("pulling image");
             pull_image(&self.client, &image).await?;
         }
 
