@@ -1,4 +1,5 @@
 /// Enum representing a port's communication protocol
+#[derive(Debug, Clone, Copy)]
 pub enum Protocol {
     /// TCP protocol
     Tcp,

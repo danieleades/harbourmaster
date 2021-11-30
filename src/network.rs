@@ -1,7 +1,10 @@
+use std::fmt::Debug;
+
 use crate::Client;
 use shiplift::{builder::NetworkCreateOptionsBuilder, NetworkCreateOptions};
 
 /// Abstraction of a Docker network
+#[derive(Debug, Clone)]
 pub struct Network {
     id: String,
     client: Client,
@@ -10,15 +13,16 @@ pub struct Network {
 impl Network {
     /// Return a Future which resolves to a new Network.
     pub async fn new(name: impl AsRef<str>) -> Result<Self, shiplift::Error> {
-        NetworkBuilder::new(name).build().await
+        Builder::new(name).build().await
     }
 
     /// Create a network using advanced configuration
-    pub fn builder(name: impl AsRef<str>) -> NetworkBuilder {
-        NetworkBuilder::new(name)
+    pub fn builder(name: impl AsRef<str>) -> Builder {
+        Builder::new(name)
     }
 
     /// The unique id of the Docker network
+    #[must_use]
     pub fn id(&self) -> &str {
         &self.id
     }
@@ -29,14 +33,23 @@ impl Network {
     }
 }
 
-pub struct NetworkBuilder {
+pub struct Builder {
     client: Client,
     options: NetworkCreateOptionsBuilder,
 }
 
-impl NetworkBuilder {
+impl std::fmt::Debug for Builder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Builder")
+            .field("client", &self.client)
+            .field("options", &"NetworkCreateOptionsBuilder")
+            .finish()
+    }
+}
+
+impl Builder {
     fn new(name: impl AsRef<str>) -> Self {
-        NetworkBuilder {
+        Self {
             client: Client::default(),
             options: NetworkCreateOptions::builder(name.as_ref()),
         }

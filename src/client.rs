@@ -2,14 +2,24 @@ use lazy_static::lazy_static;
 use std::{ops, sync::Arc};
 
 /// Docker client
+#[derive(Clone)]
 pub struct Client {
     inner_client: Arc<shiplift::Docker>,
+}
+
+impl std::fmt::Debug for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client")
+            .field("inner client", &"...")
+            .finish()
+    }
 }
 
 impl Client {
     /// Construct a new unique Docker Client. Unless you know you need
     /// a unique Client, you should probably `use Client::default()` which
     /// uses a global Docker client internally
+    #[must_use]
     pub fn new() -> Self {
         Self {
             inner_client: Arc::new(shiplift::Docker::new()),
@@ -34,7 +44,7 @@ impl ops::Deref for Client {
 }
 
 impl From<shiplift::Docker> for Client {
-    /// Create a new Docker Client from a shiplift::Docker object
+    /// Create a new Docker Client from a [`shiplift::Docker`] object
     ///
     /// # Example
     /// ```

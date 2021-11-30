@@ -1,6 +1,5 @@
 use crate::{Client, Protocol};
 use futures_util::stream::StreamExt;
-use log::{debug, info};
 use rand::{
     distributions::{Alphanumeric, Distribution},
     thread_rng,
@@ -9,8 +8,9 @@ use shiplift::{
     rep::{ContainerCreateInfo, ContainerDetails},
     ContainerOptions, PullOptions, RmContainerOptions,
 };
-use std::{collections::HashMap, net::SocketAddrV4};
+use std::collections::HashMap;
 
+#[derive(Debug, Clone, Copy)]
 struct Port {
     pub source: u32,
     pub host: u32,
@@ -27,6 +27,7 @@ struct Port {
 /// Container. The Containers will NOT clean themselves up when they are
 /// dropped, you must call the [delete](Container::delete) method on them to
 /// remove the container from the host machine.
+#[derive(Debug, Clone)]
 pub struct Container {
     pub(crate) details: ContainerDetails,
 
@@ -49,7 +50,7 @@ impl Container {
     /// }
     ///  ```
     pub async fn new(image_name: impl Into<String>) -> Result<Container, shiplift::Error> {
-        ContainerBuilder::new(image_name).build().await
+        Builder::new(image_name).build().await
     }
 
     /// Pull an image and create a new Docker container from it.
@@ -70,15 +71,12 @@ impl Container {
     /// }
     ///  ```
     pub async fn pull(image_name: impl Into<String>) -> Result<Container, shiplift::Error> {
-        ContainerBuilder::new(image_name)
-            .pull_on_build(true)
-            .build()
-            .await
+        Builder::new(image_name).pull_on_build(true).build().await
     }
 
     /// Create a new Docker container with advanced configuration.
     ///
-    /// Check the [ContainerBuilder](ContainerBuilder) documentation for the
+    /// Check the [Builder](Builder) documentation for the
     /// full list of options.
     ///
     /// # Example
@@ -117,31 +115,26 @@ impl Container {
     ///     println!("container deleted!");
     /// }
     /// ```
-    pub fn builder(image_name: impl Into<String>) -> ContainerBuilder {
-        ContainerBuilder::new(image_name)
+    pub fn builder(image_name: impl Into<String>) -> Builder {
+        Builder::new(image_name)
     }
 
     /// Return the Docker id of the running container
+    #[must_use]
     pub fn id(&self) -> &str {
         &self.details.id
     }
 
     /// Not yet implemented
-    pub fn ports(&self) -> &HashMap<SourcePort, Vec<HostPort>> {
-        let _map = self
-            .details
-            .network_settings
-            .ports
-            .clone()
-            .unwrap_or_default();
-
-        todo!()
-    }
+    // #[must_use] fn ports(&self) -> &HashMap<SourcePort, Vec<HostPort>> {
+    //     todo!()
+    // }
 
     /// Exposes the underlying representation of the Docker container's ports.
     /// It's messy, this part of the API will change shortly.
-    pub fn ports_raw(&self) -> &Option<HashMap<String, Option<Vec<HashMap<String, String>>>>> {
-        &self.details.network_settings.ports
+    #[must_use]
+    pub fn ports_raw(&self) -> Option<&PortMap> {
+        self.details.network_settings.ports.as_ref()
     }
 
     /// Delete the running docker container.
@@ -156,14 +149,17 @@ impl Container {
     }
 }
 
-pub type SourcePort = (u16, Protocol);
-pub type HostPort = SocketAddrV4;
+pub type PortMap = HashMap<String, Option<Vec<HashMap<String, String>>>>;
+
+// pub type SourcePort = (u16, Protocol);
+// pub type HostPort = SocketAddrV4;
 
 /// Builder struct for fine control over the construction of a
-/// [Container](Container).
+/// [`Container`].
 ///
-/// see [Container::builder()](Container::builder) for example.
-pub struct ContainerBuilder {
+/// see [`Container::builder`] for example.
+#[derive(Debug)]
+pub struct Builder {
     image_name: String,
     image_tag: String,
     name: Option<String>,
@@ -177,9 +173,9 @@ pub struct ContainerBuilder {
     slug_length: usize,
 }
 
-impl ContainerBuilder {
+impl Builder {
     fn new(image_name: impl Into<String>) -> Self {
-        ContainerBuilder {
+        Self {
             image_name: image_name.into(),
             image_tag: String::from("latest"),
             name: None,
@@ -205,7 +201,7 @@ impl ContainerBuilder {
     }
 
     /// Use an alternative Docker [Client](Client) to manipulate the
-    /// Container.ContainerBuilder
+    /// Container.Builder
     ///
     /// This defaults to a globally shared Docker client at the default socket.
     /// This should be fine in just about all cases.
@@ -226,6 +222,7 @@ impl ContainerBuilder {
     ///
     /// Useful if you're creating a job lot of containers and you want them to
     /// have human readable names, but no collisions.
+    #[must_use]
     pub fn slug_length(mut self, length: usize) -> Self {
         self.slug_length = length;
         self
@@ -262,6 +259,7 @@ impl ContainerBuilder {
     /// Expose a port from the container to the host.
     ///
     /// Can be called multiple times to expose multiple ports.
+    #[must_use]
     pub fn expose(mut self, src_port: u16, host_port: u16, protocol: Protocol) -> Self {
         self.ports.push(Port {
             source: src_port.into(),
@@ -279,12 +277,13 @@ impl ContainerBuilder {
 
     /// Set whether the client will attempt to pull the image from the internet
     /// before running the container. defaults to false.
+    #[must_use]
     pub fn pull_on_build(mut self, pull: bool) -> Self {
         self.pull_on_build = pull;
         self
     }
 
-    /// Consume the ContainerBuilder and return a future which resolves to the
+    /// Consume the Builder and return a future which resolves to the
     /// Container (or an error!).
     pub async fn build(self) -> Result<Container, shiplift::Error> {
         let image = self.image();
@@ -314,17 +313,17 @@ impl ContainerBuilder {
 }
 
 async fn pull_image(client: &Client, image: &str) -> Result<(), shiplift::Error> {
-    info!("pulling image: {}", &image);
+    log::info!("pulling image: {}", &image);
 
     let mut stream = client
         .images()
         .pull(&PullOptions::builder().image(image).build());
     while let Some(Ok(chunk)) = stream.next().await {
         // let chunk = chunk?;
-        debug!("{}", chunk);
+        log::debug!("{}", chunk);
     }
 
-    info!("pulled image: {}", &image);
+    log::info!("pulled image: {}", &image);
     Ok(())
 }
 
