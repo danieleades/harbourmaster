@@ -196,8 +196,7 @@ impl Builder {
         self
     }
 
-    /// Use an alternative Docker [Client](Client) to manipulate the
-    /// Container.Builder
+    /// Use an alternative Docker [Client](Client)
     ///
     /// This defaults to a globally shared Docker client at the default socket.
     /// This should be fine in just about all cases.
